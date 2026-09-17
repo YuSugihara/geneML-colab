@@ -51,7 +51,6 @@ decompressed automatically and the original file is left untouched.
 | `MIN_GENE_SCORE` | `dynamic` | Score threshold. `dynamic` calibrates on the whole input and needs at least 100 kb. |
 | `CONTIGS_FILTER` | empty | Comma-separated contig IDs, to run on a subset. |
 | `CORES` | `2` | Worker processes. Free Colab gives 2 vCPUs. |
-| `FAST_INFERENCE` | `False` | Faster execution path. Produces identical output. |
 | `USE_CPU_ONLY` | `False` | Disable the GPU. Same results, much slower. |
 | `DOWNLOAD_RESULTS` | `True` | Download the zip when the run finishes. |
 | `EXTRA_ARGS` | empty | Any other geneML flag, passed straight through, e.g. `--max-intron-size 1000`. |
