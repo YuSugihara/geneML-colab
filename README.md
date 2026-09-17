@@ -51,7 +51,7 @@ decompressed automatically and the original file is left untouched.
 | `MIN_GENE_SCORE` | `dynamic` | Score threshold. `dynamic` calibrates on the whole input and needs at least 100 kb. |
 | `CONTIGS_FILTER` | empty | Comma-separated contig IDs, to run on a subset. |
 | `CORES` | `2` | Worker processes. Free Colab gives 2 vCPUs. |
-| `FAST_INFERENCE` | `False` | Faster execution path with identical output. See below. |
+| `FAST_INFERENCE` | `False` | Faster execution path. Produces identical output. |
 | `USE_CPU_ONLY` | `False` | Disable the GPU. Same results, much slower. |
 | `DOWNLOAD_RESULTS` | `True` | Download the zip when the run finishes. |
 | `EXTRA_ARGS` | empty | Any other geneML flag, passed straight through, e.g. `--max-intron-size 1000`. |
@@ -62,76 +62,6 @@ The zip contains `<prefix>.gff3` (annotation), `<prefix>.genes.fna` (CDS
 sequences), `<prefix>.proteins.faa` (proteins) and `<prefix>.log` (the geneML
 run log). The GFF3 has no UTRs; CDS features match exon features apart from
 phase.
-
-## Transcript variants
-
-With `MAX_TRANSCRIPTS = 1` every gene gets exactly one mRNA, marked
-`TranscriptVariant=PRIMARY`, so no isoforms are reported. Set it to `5` to keep
-alternative transcripts; geneML labels each extra mRNA with the splicing event
-that distinguishes it from the primary one (`INTRON_RETENTION`, `EXON_SKIPPING`,
-`ALT_FIRST_EXON`, `ALT_LAST_EXON`, `ALT_5_SPLICE_SITE`, `ALT_3_SPLICE_SITE` or
-`COMPLEX`). The gene count stays the same either way — only the number of mRNA
-records changes. geneML caps the selection at 5, so larger values change nothing.
-
-## Accuracy
-
-This notebook never trades accuracy for speed. In particular it does **not**
-enable float16 / mixed precision, which would be faster on a T4 but can shift
-borderline scores.
-
-`FAST_INFERENCE` changes only *how* the model is executed, not what it computes.
-The same float32 weights run as a traced TensorFlow graph instead of eager
-op-by-op dispatch, and sequences are scored in 200 kb chunks instead of 100 kb.
-The chunking is exact, because each chunk is padded with 400 bp of context on
-both sides, so every base keeps its full context regardless of chunk size. This
-was verified by running both settings on the same input: the GFF3 and protein
-FASTA files came out byte-identical. It is off by default so that a first run
-reproduces earlier results exactly. To check on your own genome, run it once
-each way and compare with `md5sum`.
-
-## Performance on a free GPU
-
-- **Confirm the GPU is really being used.** This is by far the biggest factor.
-  If TensorFlow falls back to the CPU, geneML still runs but is roughly an order
-  of magnitude slower. Cell 1 checks this explicitly and warns you.
-- `TF_FORCE_GPU_ALLOW_GROWTH=true` is set for the run, so the worker processes
-  share the single GPU instead of the first one reserving nearly all of its
-  memory. This has no effect on the numbers produced.
-- `CORES = 2` matches the 2 vCPUs of free Colab. It also pipelines the work:
-  while one process is on the GPU, the other runs the CPU-bound gene-calling
-  step.
-- Cell 2 prints the wall-clock time and bp/s, so you can compare configurations
-  on your own data. For quick timing experiments use `CONTIGS_FILTER`; note that
-  `dynamic` scoring calibrates on the whole input, so a contig subset is for
-  timing only, not for a final annotation.
-- Free Colab disconnects idle sessions and caps total runtime, so keep the tab
-  open for large genomes.
-
-## Compatibility fix
-
-geneML 1.1.0 fails with
-`AttributeError: 'float' object has no attribute 'lower'` whenever
-`--min-gene-score` is given a number instead of `dynamic`
-(`args.py` parses the value to a float, then `params.py` calls `.lower()` on
-it). Cell 2 runs geneML through a small launcher that passes the value through
-as a string, so the numeric thresholds work. With `dynamic` the launcher changes
-nothing, and any failure falls back to geneML's own behaviour.
-
-## Repository layout
-
-```
-geneML-colab/
-├── README.md
-└── geneML_Colab.ipynb
-```
-
-Commit the notebook **without cell outputs** so it always opens clean and the
-diffs stay readable:
-
-```bash
-pip install nbstripout
-nbstripout --install        # run once inside the repository
-```
 
 ## Credits
 
